@@ -6,17 +6,58 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/movie-app-api/config"
 	"github.com/movie-app-api/models"
+	"gorm.io/gorm/clause"
 )
 
 func GetMoovie(c *gin.Context) {
 	var moovies []models.Moovie
 
-	config.DB.Find(&moovies)
+	config.DB.Preload(clause.Associations).Find(&moovies)
 	// config.DB.Preload(clause.Associations).Find(&moovies)
+
+	respMoovie := []models.ResponseMoovies{}
+	for _, Moov := range moovies {
+		respCategory := []models.ResponseCategory{}
+		for _, Ctgry := range Moov.Categories {
+			respCategry := models.ResponseCategory{
+				ID:           Ctgry.ID,
+				Categoryname: Ctgry.Categorie.CategoryName,
+			}
+			respCategory = append(respCategory, respCategry)
+		}
+		respRatting := []models.ResponseRatting{}
+		for _, rattR := range Moov.Rating {
+			resp := models.ResponseRatting{
+				ID:       rattR.ID,
+				Ratting:  rattR.Ratting,
+				MoovieID: rattR.MoovieID,
+			}
+			respRatting = append(respRatting, resp)
+		}
+		RespReview := []models.ResponseReview{}
+		for _, review := range Moov.Reviews {
+			respView := models.ResponseReview{
+				ID:     review.ID,
+				Review: review.Review,
+			}
+			RespReview = append(RespReview, respView)
+		}
+		moovieResp := models.ResponseMoovies{
+			ID:          Moov.ID,
+			Title:       Moov.Title,
+			Description: Moov.Description,
+			Years:       Moov.Years,
+			Poster:      Moov.Poster,
+			Rating:      respRatting,
+			Categories:  respCategory,
+			Reviews:     RespReview,
+		}
+		respMoovie = append(respMoovie, moovieResp)
+	}
 
 	c.JSON(200, gin.H{
 		"message": "success",
-		"data":    moovies,
+		"data":    respMoovie,
 	})
 }
 
@@ -40,11 +81,26 @@ func InsertMoovie(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(200, gin.H{
-		"message": "insert success",
-		"data":    moovie,
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":     "insert success",
+		"ID":          moovie.ID,
+		"Title":       moovie.Title,
+		"Description": moovie.Description,
+		"Years":       moovie.Years,
+		"Poster":      moovie.Poster,
+		"Rating":      moovie.Rating,
+		"Category_ID": moovie.CategorieID,
 	})
 }
+
+// // type reqMoovie struct {
+// // 	Title       string `json:"title"`
+// // 	Description string `json:"description"`
+// // 	Years       int    `json:"years"`
+// // 	Poster      string `json:"poster"`
+// // 	CategoryID  uint   `json:"category_id"`
+// }
 
 func EditMoovie(c *gin.Context) {
 	id := c.Param("id")
@@ -62,8 +118,12 @@ func EditMoovie(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "update success",
-		"data":    moovie,
+		"message":     "update success",
+		"id":          moovie.ID,
+		"title":       moovie.Title,
+		"description": moovie.Description,
+		"years":       moovie.Years,
+		"poster":      moovie.Poster,
 	})
 }
 
